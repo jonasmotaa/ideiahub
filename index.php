@@ -1,9 +1,9 @@
 <?php
 session_start();
-if((!isset($_SESSION['email']) == true) and (!isset($_SESSION['senha']) == true)){
-    unset($_SESSION['email']);
-    unset($_SESSION['senha']);
-    header('Location: login.php'); // se nao existir sessao, retorna para login.php
+if ((!isset($_SESSION['email']) == true) and (!isset($_SESSION['senha']) == true)) {
+  unset($_SESSION['email']);
+  unset($_SESSION['senha']);
+  header('Location: login.php'); // se nao existir sessao, retorna para login.php
 
 }
 include_once('php/conexao.php');
@@ -12,6 +12,74 @@ $email = $_SESSION['email'];
 $sql = "SELECT nome FROM usuario WHERE email = '$email'";
 $result =  $mysqli->query($sql);
 $nome = $result->fetch_assoc();
+
+$sql = "SELECT id FROM usuario WHERE email = '$email'";
+$result = $mysqli->query($sql);
+$row = $result->fetch_assoc();  // Obtém a linha como array associativo
+$id = $row['id'];              // Extrai o valor do ID
+
+// Obter o mês e o ano atual
+$mesAtual = date('m');
+$anoAtual = date('Y');
+$mesAnterior = $mesAtual - 1;
+$anoAnterior = $anoAtual;
+
+if ($mesAtual == 1) {
+  $mesAnterior = 12;
+  $anoAnterior = $anoAtual - 1;
+}
+
+// Consulta SQL
+$sql = "SELECT u.id AS id_usuario, SUM(c.valor) AS soma_valores
+        FROM usuario u
+        JOIN comissao c
+        ON u.id = c.idu
+        WHERE MONTH(c.datcomissao) = $mesAtual AND YEAR(c.datcomissao) = $anoAtual AND u.id = $id
+        GROUP BY u.id";
+
+$result2 = $mysqli->query($sql);
+$soma = $result2->fetch_assoc();
+
+// Consultar o total de comissões do mês anterior
+
+$sqlMesAnterior = "SELECT SUM(valor) AS soma_anterior FROM comissao 
+                   WHERE MONTH(datcomissao) = $mesAnterior AND YEAR(datcomissao) = $anoAnterior AND idu = $id";
+$resultMesAnterior = $mysqli->query($sqlMesAnterior);
+$rowMesAnterior = $resultMesAnterior->fetch_assoc();
+$somaAnterior = $rowMesAnterior['soma_anterior'] ?? 0;
+
+// Calcular a porcentagem de aumento
+
+if (isset($soma['soma_valores'])) {
+  if ($soma['soma_valores'] > 0 && $somaAnterior > 0) {
+    $porcentagemAumento = (($soma['soma_valores'] - $somaAnterior) / $somaAnterior) * 100;
+  } else {
+    $porcentagemAumento = 0; // Se não houver dados no mês anterior
+  }
+}
+
+
+
+// Função para listar comissões com Cliente, Data e Valor
+
+
+$sql = "SELECT t.cliente AS Cliente, c.datcomissao AS Data, c.valor AS Valor
+          FROM comissao c
+          JOIN transacao t ON c.idt = t.id
+          WHERE c.idu = $id
+          AND c.datcomissao >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+          ORDER BY c.datcomissao DESC";
+$comissoes = $mysqli->query($sql);
+
+
+// Exibir a imagem do usuário
+$imagemUsuario = "assets/users/default.png"; // Imagem padrão
+foreach (["jpg", "jpeg", "png"] as $ext) {
+    if (file_exists("assets/users/" . $id . "." . $ext)) {
+        $imagemUsuario = "assets/users/" . $id . "." . $ext;
+        break;
+    }
+}
 
 ?>
 
@@ -24,9 +92,9 @@ $nome = $result->fetch_assoc();
   <title>Home</title>
   <!--favicon-->
   <link rel="icon" href="assets/images/favicon-32x32.png"
-  <!-- loader-->
-	<link href="assets/css/pace.min.css" rel="stylesheet">
-	<script src="assets/js/pace.min.js"></script>
+    <!-- loader-->
+  <link href="assets/css/pace.min.css" rel="stylesheet">
+  <script src="assets/js/pace.min.js"></script>
 
   <!--plugins-->
   <link href="assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css" rel="stylesheet">
@@ -63,7 +131,7 @@ $nome = $result->fetch_assoc();
             <div class="card rounded-4 overflow-hidden">
               <div class="card-header d-lg-none">
                 <div class="position-relative">
-                 </div>
+                </div>
               </div>
               <div class="card-body search-content">
                 <p class="search-title">Recent Searches</p>
@@ -102,7 +170,7 @@ $nome = $result->fetch_assoc();
                       <h5 class="mb-0 search-list-title">eCommerce Website Tutorials</h5>
                     </div>
                   </div>
-  
+
                   <div class="search-list-item d-flex align-items-center gap-3">
                     <div class="list-icon">
                       <i class="material-icons-outlined fs-5">laptop</i>
@@ -112,20 +180,20 @@ $nome = $result->fetch_assoc();
                     </div>
                   </div>
                 </div>
-  
+
                 <hr>
                 <p class="search-title">Members</p>
-  
+
                 <div class="search-list d-flex flex-column gap-2">
                   <div class="search-list-item d-flex align-items-center gap-3">
                     <div class="memmber-img">
-                      <img src="assets/images/avatars/01.png" width="32" height="32" class="rounded-circle" alt="">
+                      <img src="<?php echo $imagemUsuario; ?>" width="32" height="32" class="rounded-circle" alt="">
                     </div>
                     <div class="">
                       <h5 class="mb-0 search-list-title ">Andrew Stark</h5>
                     </div>
                   </div>
-  
+
                   <div class="search-list-item d-flex align-items-center gap-3">
                     <div class="memmber-img">
                       <img src="assets/images/avatars/02.png" width="32" height="32" class="rounded-circle" alt="">
@@ -134,7 +202,7 @@ $nome = $result->fetch_assoc();
                       <h5 class="mb-0 search-list-title ">Snetro Jhonia</h5>
                     </div>
                   </div>
-  
+
                   <div class="search-list-item d-flex align-items-center gap-3">
                     <div class="memmber-img">
                       <img src="assets/images/avatars/03.png" width="32" height="32" class="rounded-circle" alt="">
@@ -143,7 +211,7 @@ $nome = $result->fetch_assoc();
                       <h5 class="mb-0 search-list-title">Michle Clark</h5>
                     </div>
                   </div>
-  
+
                 </div>
               </div>
               <div class="card-footer text-center bg-transparent">
@@ -157,153 +225,12 @@ $nome = $result->fetch_assoc();
         <li class="nav-item d-lg-none mobile-search-btn">
           <a class="nav-link" href="javascript:;"><i class="material-icons-outlined">search</i></a>
         </li>
-   
+
+
 
         
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" data-bs-auto-close="outside"
-            data-bs-toggle="dropdown" href="javascript:;"><i class="material-icons-outlined">apps</i></a>
-          <div class="dropdown-menu dropdown-menu-end dropdown-apps shadow-lg p-3">
-            <div class="border rounded-4 overflow-hidden">
-              <div class="row row-cols-3 g-0 border-bottom">
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/01.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Gmail</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/02.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Skype</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/03.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Slack</p>
-                    </div>
-                  </div>
-                </div>
-              </div><!--end row-->
-
-              <div class="row row-cols-3 g-0 border-bottom">
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/04.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">YouTube</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/05.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Google</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/06.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Instagram</p>
-                    </div>
-                  </div>
-                </div>
-              </div><!--end row-->
-
-              <div class="row row-cols-3 g-0 border-bottom">
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/07.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Spotify</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/08.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Yahoo</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/09.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Facebook</p>
-                    </div>
-                  </div>
-                </div>
-              </div><!--end row-->
-
-              <div class="row row-cols-3 g-0">
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/10.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Figma</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col border-end">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/11.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Paypal</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="app-wrapper d-flex flex-column gap-2 text-center">
-                    <div class="app-icon">
-                      <img src="assets/images/apps/12.png" width="36" alt="">
-                    </div>
-                    <div class="app-name">
-                      <p class="mb-0">Photo</p>
-                    </div>
-                  </div>
-                </div>
-              </div><!--end row-->
-            </div>
-          </div>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" data-bs-auto-close="outside"
-            data-bs-toggle="dropdown" href="javascript:;"><i class="material-icons-outlined">notifications</i>
-            <span class="badge-notify">5</span>
-          </a>
+         
           <div class="dropdown-menu dropdown-notify dropdown-menu-end shadow">
             <div class="px-3 py-1 d-flex align-items-center justify-content-between border-bottom">
               <h5 class="notiy-title mb-0">Notifications</h5>
@@ -336,7 +263,7 @@ $nome = $result->fetch_assoc();
                 <a class="dropdown-item border-bottom py-2" href="javascript:;">
                   <div class="d-flex align-items-center gap-3">
                     <div class="">
-                      <img src="assets/images/avatars/01.png" class="rounded-circle" width="45" height="45" alt="">
+                      <img src="<?php echo $imagemUsuario; ?>" class="rounded-circle" width="45" height="45" alt="">
                     </div>
                     <div class="">
                       <h5 class="notify-title">Congratulations Jhon</h5>
@@ -437,33 +364,23 @@ $nome = $result->fetch_assoc();
             </div>
           </div>
         </li>
-       
+
         <li class="nav-item dropdown">
           <a href="javascrpt:;" class="dropdown-toggle dropdown-toggle-nocaret" data-bs-toggle="dropdown">
-             <img src="assets/images/avatars/01.png" class="rounded-circle p-1 border" width="45" height="45" alt="">
+            <img src="<?php echo $imagemUsuario; ?>" class="rounded-circle p-1 border" width="45" height="45" alt="">
           </a>
           <div class="dropdown-menu dropdown-user dropdown-menu-end shadow">
             <a class="dropdown-item  gap-2 py-2" href="javascript:;">
               <div class="text-center">
-                <img src="assets/images/avatars/01.png" class="rounded-circle p-1 shadow mb-3" width="90" height="90"
+                <img src="<?php echo $imagemUsuario; ?>" class="rounded-circle p-1 shadow mb-3" width="90" height="90"
                   alt="">
-                <h5 class="user-name mb-0 fw-bold">Hello, Jhon</h5>
+                <h5 class="user-name mb-0 fw-bold">Olá, <?php echo $nome['nome']; ?></h5>
               </div>
             </a>
             <hr class="dropdown-divider">
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:;"><i
-              class="material-icons-outlined">person_outline</i>Profile</a>
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:;"><i
-              class="material-icons-outlined">local_bar</i>Setting</a>
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:;"><i
-              class="material-icons-outlined">dashboard</i>Dashboard</a>
-            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:;"><i
-              class="material-icons-outlined">account_balance</i>Earning</a>
-              <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:;"><i
-                class="material-icons-outlined">cloud_download</i>Downloads</a>
-            <hr class="dropdown-divider">
+            
             <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="sair.php"><i
-            class="material-icons-outlined">power_settings_new</i>Logout</a>
+                class="material-icons-outlined">power_settings_new</i>Logout</a>
           </div>
         </li>
       </ul>
@@ -473,8 +390,8 @@ $nome = $result->fetch_assoc();
   <!--end top header-->
 
 
-   <!--start sidebar-->
-   <aside class="sidebar-wrapper" data-simplebar="true">
+  <!--start sidebar-->
+  <aside class="sidebar-wrapper" data-simplebar="true">
     <div class="sidebar-header">
       <div class="logo-icon">
         <img src="assets/images/logo-icon-ideia.png" class="logo-img" alt="">
@@ -486,631 +403,180 @@ $nome = $result->fetch_assoc();
       </div>
     </div>
     <div class="sidebar-nav">
-        <!--navigation-->
-        <ul class="metismenu" id="sidenav">
-          <li>
-            <a href="javascript:;" >
-              <div class="parent-icon"><i class="material-icons-outlined">home</i>
-              </div>
-              <div class="menu-title">Home</div>
-            </a>
-            
-          </li>
-          
-          <li>
-            <a class="has-arrow" href="javascript:;">
-              <div class="parent-icon"><i class="material-icons-outlined">apps</i>
-              </div>
-              <div class="menu-title">Apps</div>
-            </a>
+      <!--navigation-->
+      <ul class="metismenu" id="sidenav">
+        <li>
+          <a href="javascript:;">
+            <div class="parent-icon"><i class="material-icons-outlined">home</i>
+            </div>
+            <div class="menu-title">Home</div>
+          </a>
+
+        </li>
+
+        <li>
+          <a class="has-arrow" href="javascript:;">
+            <div class="parent-icon"><i class="material-icons-outlined">apps</i>
+            </div>
+            <div class="menu-title">Apps</div>
+          </a>
+          <?php if ($id == 1) { ?>
             <ul>
-             
-              <li><a href="app-invoice.html"><i class="material-icons-outlined">arrow_right</i>Invoice</a>
+
+              <li><a href="transacoes.php"><i class="material-icons-outlined">arrow_right</i>Realizar Transação</a>
               </li>
             </ul>
-          </li>
-         
-          <li class="menu-label">Pages</li>
-         
-          <li>
-            <a href="user-profile.html">
-              <div class="parent-icon"><i class="material-icons-outlined">person</i>
-              </div>
-              <div class="menu-title">User Profile</div>
-            </a>
-          </li>
-          
-         </ul>
-        <!--end navigation-->
+
+            <ul>
+
+              <li><a href="saldo.php"><i class="material-icons-outlined">arrow_right</i>Transações</a>
+              </li>
+            </ul>
+        </li>
+      <?php } ?>
+      <li class="menu-label">Pages</li>
+
+      <li>
+        <a href="user-profile.php">
+          <div class="parent-icon"><i class="material-icons-outlined">person</i>
+          </div>
+          <div class="menu-title">Perfil de usuário</div>
+        </a>
+      </li>
+
+      </ul>
+      <!--end navigation-->
     </div>
   </aside>
-<!--end sidebar-->
+  <!--end sidebar-->
 
   <!--start main wrapper-->
   <main class="main-wrapper">
     <div class="main-content">
       <!--breadcrumb-->
-				<div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-					<div class="breadcrumb-title pe-3">Dashboard</div>
-					<div class="ps-3">
-						<nav aria-label="breadcrumb">
-							<ol class="breadcrumb mb-0 p-0">
-								<li class="breadcrumb-item"><a href="javascript:;"><i class="bx bx-home-alt"></i></a>
-								</li>
-								<li class="breadcrumb-item active" aria-current="page">Analysis</li>
-							</ol>
-						</nav>
-					</div>
-					<div class="ms-auto">
-						<div class="btn-group">
-							<button type="button" class="btn btn-outline-primary">Settings</button>
-							<button type="button" class="btn btn-outline-primary split-bg-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">	<span class="visually-hidden">Toggle Dropdown</span>
-							</button>
-							<div class="dropdown-menu dropdown-menu-right dropdown-menu-lg-end">	<a class="dropdown-item" href="javascript:;">Action</a>
-								<a class="dropdown-item" href="javascript:;">Another action</a>
-								<a class="dropdown-item" href="javascript:;">Something else here</a>
-								<div class="dropdown-divider"></div>	<a class="dropdown-item" href="javascript:;">Separated link</a>
-							</div>
-						</div>
-					</div>
-				</div>
-				<!--end breadcrumb-->
-     
+      <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
+        <div class="breadcrumb-title pe-3">Dashboard</div>
+        <div class="ps-3">
+          <nav aria-label="breadcrumb">
+
+          </nav>
+        </div>
+
+      </div>
+      <!--end breadcrumb-->
+
+      <div class="row">
+        <div class="col-xxl-8 d-flex align-items-stretch">
+          <div class="card w-100 overflow-hidden rounded-4">
+            <div class="card-body position-relative p-4">
+              <div class="row">
+                <div class="col-12 col-sm-7">
+                  <div class="d-flex align-items-center gap-3 mb-5">
+                    <img src="<?php echo $imagemUsuario; ?>" class="rounded-circle bg-grd-info p-1" width="60" height="60" alt="user">
+                    <div class="">
+                      <p class="mb-0 fw-semibold">Seja bem vindo!</p>
+                      <h4 class="fw-semibold mb-0 fs-4 mb-0"><?php echo $nome['nome']; ?></h4>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-5">
+                    <div class="">
+                      <h4 class="mb-1 fw-semibold d-flex align-content-center"><?php
+                                                                                if (isset($soma['soma_valores'])) {
+                                                                                  echo "R$" . number_format($soma['soma_valores'], 2, ',', '.');
+                                                                                } else {
+                                                                                  echo "R$ 0,00";
+                                                                                }
+                                                                                ?><i class="ti ti-arrow-up-right fs-5 lh-base text-success"></i>
+                      </h4>
+                      <p class="mb-3">Receita mensal</p>
+                    </div>
+                    <div class="vr"></div>
+                    <div class="">
+                      <h4 class="mb-1 fw-semibold d-flex align-content-center"><?php
+                                                                                if (isset($porcentagemAumento)) {
+                                                                                  echo number_format($porcentagemAumento) . "%";
+                                                                                } else {
+                                                                                  echo "0%";
+                                                                                }
+                                                                                ?>
+                        <i class="ti ti-arrow-up-right fs-5 lh-base text-success"></i>
+                      </h4>
+                      <p class="mb-3">Taxa de crescimento</p>
+                      <div class="progress mb-0" style="height:5px;">
+                        <div class="progress-bar bg-grd-danger" role="progressbar" style="width: <?php echo number_format($porcentagemAumento) . "%"; ?>" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-sm-5">
+                  <div class="welcome-back-img pt-4">
+                    <img src="assets/images/gallery/welcome-back-3.png" height="180" alt="">
+                  </div>
+                </div>
+              </div><!--end row-->
+            </div>
+          </div>
+        </div>
+
+
+
         <div class="row">
-          <div class="col-xxl-8 d-flex align-items-stretch">
-            <div class="card w-100 overflow-hidden rounded-4">
-              <div class="card-body position-relative p-4">
-                <div class="row">
-                  <div class="col-12 col-sm-7">
-                    <div class="d-flex align-items-center gap-3 mb-5">
-                      <img src="assets/images/avatars/01.png" class="rounded-circle bg-grd-info p-1"  width="60" height="60" alt="user">
-                      <div class="">
-                        <p class="mb-0 fw-semibold">Seja bem vindo!</p>
-                        <h4 class="fw-semibold mb-0 fs-4 mb-0"><?php echo $nome['nome']; ?></h4>
-                      </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-5">
-                      <div class="">
-                        <h4 class="mb-1 fw-semibold d-flex align-content-center">$65.4K<i class="ti ti-arrow-up-right fs-5 lh-base text-success"></i>
-                        </h4>
-                        <p class="mb-3">Today's Sales</p>
-                        <div class="progress mb-0" style="height:5px;">
-                          <div class="progress-bar bg-grd-success" role="progressbar" style="width: 60%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                      </div>
-                      <div class="vr"></div>
-                      <div class="">
-                        <h4 class="mb-1 fw-semibold d-flex align-content-center">78.4%<i class="ti ti-arrow-up-right fs-5 lh-base text-success"></i>
-                        </h4>
-                        <p class="mb-3">Growth Rate</p>
-                        <div class="progress mb-0" style="height:5px;">
-                          <div class="progress-bar bg-grd-danger" role="progressbar" style="width: 60%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-12 col-sm-5">
-                    <div class="welcome-back-img pt-4">
-                       <img src="assets/images/gallery/welcome-back-3.png" height="180" alt="">
-                    </div>
-                  </div>
-                </div><!--end row-->
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-2 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
+          <div class="col-12 col-lg-16 d-flex">
+            <div class="card w-100">
               <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between mb-1">
-                  <div class="">
-                    <h5 class="mb-0">42.5K</h5>
-                    <p class="mb-0">Active Users</p>
-                  </div>
-                  <div class="dropdown">
-                    <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                      data-bs-toggle="dropdown">
-                      <span class="material-icons-outlined fs-5">more_vert</span>
-                    </a>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                    </ul>
-                  </div>
-                </div>
-                <div class="chart-container2">
-                  <div id="chart1"></div>
-                </div>
-                <div class="text-center">
-                  <p class="mb-0 font-12">24K users increased from last month</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-2 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                  <div class="">
-                    <h5 class="mb-0">97.4K</h5>
-                    <p class="mb-0">Total Users</p>
-                  </div>
-                  <div class="dropdown">
-                    <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                      data-bs-toggle="dropdown">
-                      <span class="material-icons-outlined fs-5">more_vert</span>
-                    </a>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                    </ul>
-                  </div>
-                </div>
-                <div class="chart-container2">
-                  <div id="chart2"></div>
-                </div>
-                <div class="text-center">
-                  <p class="mb-0 font-12"><span class="text-success me-1">12.5%</span> from last month</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div class="text-center">
-                  <h6 class="mb-0">Monthly Revenue</h6>
-                </div>
-                <div class="mt-4" id="chart5"></div>
-                <p>Avrage monthly sale for every author</p>
-                <div class="d-flex align-items-center gap-3 mt-4">
-                  <div class="">
-                    <h1 class="mb-0 text-primary">68.9%</h1>
-                  </div>
-                  <div class="d-flex align-items-center align-self-end">
-                    <p class="mb-0 text-success">34.5%</p>
-                    <span class="material-icons-outlined text-success">expand_less</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div class="d-flex flex-column gap-3">
-                  <div class="d-flex align-items-start justify-content-between">
-                    <div class="">
-                      <h5 class="mb-0">Device Type</h5>
-                    </div>
-                    <div class="dropdown">
-                      <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                        data-bs-toggle="dropdown">
-                        <span class="material-icons-outlined fs-5">more_vert</span>
-                      </a>
-                      <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                        <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                        <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div class="position-relative">
-                    <div class="piechart-legend">
-                      <h2 class="mb-1">68%</h2>
-                      <h6 class="mb-0">Total Views</h6>
-                    </div>
-                    <div id="chart6"></div>
-                  </div>
-                  <div class="d-flex flex-column gap-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                      <p class="mb-0 d-flex align-items-center gap-2 w-25"><span
-                          class="material-icons-outlined fs-6 text-primary">desktop_windows</span>Desktop</p>
-                      <div class="">
-                        <p class="mb-0">35%</p>
-                      </div>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between">
-                      <p class="mb-0 d-flex align-items-center gap-2 w-25"><span
-                          class="material-icons-outlined fs-6 text-danger">tablet_mac</span>Tablet</p>
-                      <div class="">
-                        <p class="mb-0">48%</p>
-                      </div>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between">
-                      <p class="mb-0 d-flex align-items-center gap-2 w-25"><span
-                          class="material-icons-outlined fs-6 text-success">phone_android</span>Mobile</p>
-                      <div class="">
-                        <p class="mb-0">27%</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xxl-4">
-            <div class="row">
-              <div class="col-md-6 d-flex align-items-stretch">
-                <div class="card w-100 rounded-4">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between mb-1">
-                      <div class="">
-                        <h5 class="mb-0">82.7K</h5>
-                        <p class="mb-0">Total Clicks</p>
-                      </div>
-                      <div class="dropdown">
-                        <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                          data-bs-toggle="dropdown">
-                          <span class="material-icons-outlined fs-5">more_vert</span>
-                        </a>
-                        <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                          <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                          <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                        </ul>
-                      </div>
-                    </div>
-                    <div class="chart-container2">
-                      <div id="chart3"></div>
-                    </div>
-                    <div class="text-center">
-                      <p class="mb-0 font-12"><span class="text-success me-1">12.5%</span> from last month</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-6 d-flex align-items-stretch">
-                <div class="card w-100 rounded-4">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between mb-1">
-                      <div class="">
-                        <h5 class="mb-0">68.4K</h5>
-                        <p class="mb-0">Total Views</p>
-                      </div>
-                      <div class="dropdown">
-                        <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                          data-bs-toggle="dropdown">
-                          <span class="material-icons-outlined fs-5">more_vert</span>
-                        </a>
-                        <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                          <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                          <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                        </ul>
-                      </div>
-                    </div>
-                    <div class="chart-container2">
-                      <div id="chart4"></div>
-                    </div>
-                    <div class="text-center">
-                      <p class="mb-0 font-12">35K users increased from last month</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="card rounded-4">
-              <div class="card-body">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                  <div class="">
-                    <h3 class="mb-0">85,247</h3>
-                  </div>
-                  <div class="flex-grow-0">
-                    <p
-                      class="dash-lable d-flex align-items-center gap-1 rounded mb-0 bg-success text-success bg-opacity-10">
-                      <span class="material-icons-outlined fs-6">arrow_downward</span>23.7%
-                    </p>
-                  </div>
-                </div>
-                <p class="mb-0">Total Accounts</p>
-                <div id="chart7"></div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                  <div class="">
-                    <h6 class="mb-0 fw-bold">Campaign Stats</h6>
-                  </div>
-                  <div class="dropdown">
-                    <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle" data-bs-toggle="dropdown">
-                      <span class="material-icons-outlined fs-5">more_vert</span>
-                    </a>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                    </ul>
-                  </div>
-                 </div>
+                <h5 class="mb-3 fw-bold">Minhas comissões</h5>
+                <div class="product-table">
+                  <div class="table-responsive white-space-nowrap">
+                    <table class="table align-middle">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Cliente</th>
+                          <th>Data</th>
+                          <th>Valor</th>
 
-                  <ul class="list-group list-group-flush">
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-primary">
-                            <span class="material-icons-outlined text-white">calendar_today</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Campaigns</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">54</p>
-                            <p class="mb-0 fw-bold text-success">28%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-success">
-                            <span class="material-icons-outlined text-white">email</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Emailed</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">245</p>
-                            <p class="mb-0 fw-bold text-danger">15%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-branding">
-                            <span class="material-icons-outlined text-white">open_in_new</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Opened</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">54</p>
-                            <p class="mb-0 fw-bold text-success">30.5%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-warning">
-                            <span class="material-icons-outlined text-white">ads_click</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Clicked</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">859</p>
-                            <p class="mb-0 fw-bold text-danger">34.6%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-info">
-                            <span class="material-icons-outlined text-white">subscriptions</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Subscribed</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">24,758</p>
-                            <p class="mb-0 fw-bold text-success">53%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-danger">
-                            <span class="material-icons-outlined text-white">inbox</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Spam Message</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">548</p>
-                            <p class="mb-0 fw-bold text-danger">47%</p>
-                          </div>
-                        </div>
-                      </li>
-                      <li class="list-group-item px-0 bg-transparent">
-                        <div class="d-flex align-items-center gap-3">
-                          <div class="wh-42 d-flex align-items-center justify-content-center rounded-3 bg-grd-deep-blue">
-                            <span class="material-icons-outlined text-white">visibility</span>
-                          </div>
-                          <div class="flex-grow-1">
-                            <h6 class="mb-0">Views Mails</h6>
-                          </div>
-                          <div class="d-flex align-items-center gap-3">
-                            <p class="mb-0">9845</p>
-                            <p class="mb-0 fw-bold text-success">68%</p>
-                          </div>
-                        </div>
-                      </li>
-                  </ul>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <?php if ($comissoes->num_rows > 0) {
+                          while ($rowcomissoes = $comissoes->fetch_assoc()) {   ?>
+                            <tr>
+                              <td>
+                                <div class="d-flex align-items-center gap-3">
+
+                                  <div class="product-info">
+                                    <p class="product-title"><?php echo $rowcomissoes['Cliente'] ?></p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td><?php echo date('d/m/Y', strtotime($rowcomissoes['Data'])) ?></td>
+                              <td><?php echo "R$" . number_format($rowcomissoes['Valor'], 2, ',', '.') ?></td>
+                            </tr>
+                        <?php
+                          }
+                        } ?>
+                        <!--ELEMENTO-->
+
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
               </div>
             </div>
           </div>
-          <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div id="chart8"></div>
-                <div class="d-flex align-items-center gap-3 mt-4">
-                  <div class="">
-                    <h1 class="mb-0">36.7%</h1>
-                  </div>
-                  <div class="d-flex align-items-center align-self-end gap-2">
-                    <span class="material-icons-outlined text-success">trending_up</span>
-                    <p class="mb-0 text-success">34.5%</p>
-                  </div>
-                </div>
-                <p class="mb-4">Visitors Growth</p>
-                <div class="d-flex flex-column gap-3">
-                  <div class="">
-                    <p class="mb-1">Cliks <span class="float-end">2589</span></p>
-                    <div class="progress" style="height: 5px;">
-                      <div class="progress-bar bg-grd-primary" style="width: 65%"></div>
-                    </div>
-                  </div>
-                  <div class="">
-                    <p class="mb-1">Likes <span class="float-end">6748</span></p>
-                    <div class="progress" style="height: 5px;">
-                      <div class="progress-bar bg-grd-warning" style="width: 55%"></div>
-                    </div>
-                  </div>
-                  <div class="">
-                    <p class="mb-1">Upvotes <span class="float-end">9842</span></p>
-                    <div class="progress" style="height: 5px;">
-                      <div class="progress-bar bg-grd-info" style="width: 45%"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-xl-6 col-xxl-4 d-flex align-items-stretch">
-            <div class="card w-100 rounded-4">
-              <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                  <div class="">
-                    <h5 class="mb-0 fw-bold">Social Leads</h5>
-                  </div>
-                  <div class="dropdown">
-                    <a href="javascript:;" class="dropdown-toggle-nocaret options dropdown-toggle"
-                      data-bs-toggle="dropdown">
-                      <span class="material-icons-outlined fs-5">more_vert</span>
-                    </a>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="javascript:;">Action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Another action</a></li>
-                      <li><a class="dropdown-item" href="javascript:;">Something else here</a></li>
-                    </ul>
-                  </div>
-                 </div>
-                <div class="d-flex flex-column justify-content-between gap-4">
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/17.png" width="32" alt="">
-                      <p class="mb-0">Facebook</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">55%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#0d6efd", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/18.png" width="32" alt="">
-                      <p class="mb-0">LinkedIn</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">67%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#fc185a", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/19.png" width="32" alt="">
-                      <p class="mb-0">Instagram</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">78%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#02c27a", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/20.png" width="32" alt="">
-                      <p class="mb-0">Snapchat</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">46%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#fd7e14", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/05.png" width="32" alt="">
-                      <p class="mb-0">Google</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">38%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#0dcaf0", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/08.png" width="32" alt="">
-                      <p class="mb-0">Altaba</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">15%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#6f42c1", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-4">
-                    <div class="d-flex align-items-center gap-3 flex-grow-1">
-                      <img src="assets/images/apps/07.png" width="32" alt="">
-                      <p class="mb-0">Spotify</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 fs-6">12%</p>
-                    </div>
-                    <div class="">
-                      <p class="mb-0 data-attributes">
-                        <span
-                          data-peity='{ "fill": ["#ff00b3", "rgb(255 255 255 / 10%)"], "innerRadius": 14, "radius": 18 }'>5/7</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>  
-          </div>
-          
+
+        </div>
 
 
-    </div>
   </main>
   <!--end main wrapper-->
 
   <!--start overlay-->
-     <div class="overlay btn-toggle"></div>
+  <div class="overlay btn-toggle"></div>
   <!--end overlay-->
 
-   <!--start footer-->
-   <footer class="page-footer">
+  <!--start footer-->
+  <footer class="page-footer">
     <p class="mb-0">Copyright © 2024. All right reserved.</p>
   </footer>
   <!--end footer-->
@@ -1248,67 +714,7 @@ $nome = $result->fetch_assoc();
 
 
 
-  <!--start switcher-->
-  <button class="btn btn-grd btn-grd-primary position-fixed bottom-0 end-0 m-3 d-flex align-items-center gap-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop">
-    <i class="material-icons-outlined">tune</i>Customize
-  </button>
-  
-  <div class="offcanvas offcanvas-end" data-bs-scroll="true" tabindex="-1" id="staticBackdrop">
-    <div class="offcanvas-header border-bottom h-70">
-      <div class="">
-        <h5 class="mb-0">Theme Customizer</h5>
-        <p class="mb-0">Customize your theme</p>
-      </div>
-      <a href="javascript:;" class="primaery-menu-close" data-bs-dismiss="offcanvas">
-        <i class="material-icons-outlined">close</i>
-      </a>
-    </div>
-    <div class="offcanvas-body">
-      <div>
-        <p>Theme variation</p>
 
-        <div class="row g-3">
-          <div class="col-12 col-xl-6">
-            <input type="radio" class="btn-check" name="theme-options" id="BlueTheme" checked>
-            <label class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4" for="BlueTheme">
-              <span class="material-icons-outlined">contactless</span>
-              <span>Blue</span>
-            </label>
-          </div>
-          <div class="col-12 col-xl-6">
-            <input type="radio" class="btn-check" name="theme-options" id="LightTheme">
-            <label class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4" for="LightTheme">
-              <span class="material-icons-outlined">light_mode</span>
-              <span>Light</span>
-            </label>
-          </div>
-          <div class="col-12 col-xl-6">
-            <input type="radio" class="btn-check" name="theme-options" id="DarkTheme">
-            <label class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4" for="DarkTheme">
-              <span class="material-icons-outlined">dark_mode</span>
-              <span>Dark</span>
-            </label>
-          </div>
-          <div class="col-12 col-xl-6">
-            <input type="radio" class="btn-check" name="theme-options" id="SemiDarkTheme">
-            <label class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4" for="SemiDarkTheme">
-              <span class="material-icons-outlined">contrast</span>
-              <span>Semi Dark</span>
-            </label>
-          </div>
-          <div class="col-12 col-xl-6">
-            <input type="radio" class="btn-check" name="theme-options" id="BoderedTheme">
-            <label class="btn btn-outline-secondary d-flex flex-column gap-1 align-items-center justify-content-center p-4" for="BoderedTheme">
-              <span class="material-icons-outlined">border_style</span>
-              <span>Bordered</span>
-            </label>
-          </div>
-        </div><!--end row-->
-
-      </div>
-    </div>
-  </div>
-  <!--start switcher-->
 
   <!--bootstrap js-->
   <script src="assets/js/bootstrap.bundle.min.js"></script>
@@ -1327,7 +733,7 @@ $nome = $result->fetch_assoc();
   <script src="assets/js/main.js"></script>
   <script src="assets/js/dashboard1.js"></script>
   <script>
-	   new PerfectScrollbar(".user-list")
+    new PerfectScrollbar(".user-list")
   </script>
 
 </body>
